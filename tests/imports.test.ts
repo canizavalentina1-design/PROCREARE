@@ -1,0 +1,3 @@
+import { describe,expect,it } from "vitest";
+import { autoMapHeaders,normalizeSex,parseDate,parseNumber,validateWeight } from "../src/domain/imports";
+describe("import parsing",()=>{it("maps Spanish headers",()=>expect(autoMapHeaders(["caravana electrónica","Peso kg","fecha pesaje"])).toEqual({"caravana electrónica":"eid","Peso kg":"weightKg","fecha pesaje":"date"}));it("parses Paraguayan numbers",()=>expect(parseNumber("1.234,5 kg")).toBe(1234.5));it("parses dates without shifting day",()=>expect(parseDate("23/09/2026")?.toISOString()).toBe("2026-09-23T00:00:00.000Z"));it("normalizes sex and limits weight",()=>{expect(normalizeSex("Hembra")).toBe("FEMALE");expect(validateWeight("1.500")).toBe(1500);expect(validateWeight("0")).toBeNull()});});
