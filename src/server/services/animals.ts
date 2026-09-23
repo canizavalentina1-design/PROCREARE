@@ -26,3 +26,23 @@ export async function createAnimal(ctx: SessionContext, input: AnimalInput) {
     return animal;
   });
 }
+
+export async function updateAnimal(ctx: SessionContext, id: string, input: AnimalInput) {
+  if (!can(ctx.role, "editAnimals")) throw new Error("FORBIDDEN");
+  const data = animalInput.parse(input);
+  const result = await prisma.animal.updateMany({
+    where: { id, farmId: ctx.farmId, deletedAt: null },
+    data: { ...data, registrationNumber: data.registrationNumber || null, eid: data.eid || null },
+  });
+  if (!result.count) throw new Error("NOT_FOUND");
+  return prisma.animal.findUniqueOrThrow({ where: { id } });
+}
+
+export async function deleteAnimal(ctx: SessionContext, id: string) {
+  if (!can(ctx.role, "deleteAnimals")) throw new Error("FORBIDDEN");
+  const result = await prisma.animal.updateMany({
+    where: { id, farmId: ctx.farmId, deletedAt: null },
+    data: { deletedAt: new Date() },
+  });
+  if (!result.count) throw new Error("NOT_FOUND");
+}

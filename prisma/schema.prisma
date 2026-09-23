@@ -81,6 +81,7 @@ model Farm {
   animals Animal[]
   weighings Weighing[]
   sales Sale[]
+  imports ImportBatch[]
   @@index([organizationId])
 }
 model Membership {
@@ -159,4 +160,46 @@ model SystemSetting {
   value String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+enum ImportType {
+  ANIMALS
+  WEIGHINGS
+  SALES
+}
+enum ImportStatus {
+  PREVIEW
+  COMMITTED
+  ROLLED_BACK
+  FAILED
+}
+model ImportBatch {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  farmId String @db.Uuid
+  type ImportType
+  fileName String
+  fileHash String
+  status ImportStatus @default(PREVIEW)
+  totalRows Int @default(0)
+  validRows Int @default(0)
+  errorRows Int @default(0)
+  committedAt DateTime?
+  rolledBackAt DateTime?
+  farm Farm @relation(fields: [farmId], references: [id])
+  rows ImportRow[]
+  @@unique([farmId, fileHash])
+}
+model ImportRow {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  batchId String @db.Uuid
+  rowNumber Int
+  raw Json
+  normalized Json?
+  status String
+  errors Json?
+  batch ImportBatch @relation(fields: [batchId], references: [id])
+  @@unique([batchId, rowNumber])
 }
