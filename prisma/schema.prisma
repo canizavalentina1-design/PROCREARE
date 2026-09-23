@@ -122,6 +122,7 @@ model Weighing {
   date DateTime
   weightKg Decimal
   type WeighingType
+  notes String?
   farm Farm @relation(fields: [farmId], references: [id])
   animal Animal @relation(fields: [animalId], references: [id])
   @@index([farmId, date])
