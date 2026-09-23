@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+enum Role {
+  OWNER
+  MANAGER
+  OPERATOR
+  VETERINARIAN
+  READER
+}
+enum Sex {
+  MALE
+  FEMALE
+}
+enum AnimalStatus {
+  ACTIVE
+  SOLD
+  DEAD
+  TRANSFERRED
+}
+enum AnimalCategory {
+  TERNERO
+  TERNERA
+  DESMAMANTE
+  NOVILLO
+  VAQUILLA
+  VACA
+  TORO
+  BUEY
+}
+enum AnimalOrigin {
+  BORN_ON_FARM
+  PURCHASED
+  OTHER
+}
+enum WeighingType {
+  INITIAL
+  ROUTINE
+  WEANING
+  SALE
+  REPRODUCTIVE
+}
+enum SalePriceMode {
+  PER_HEAD
+  PER_KG
+}
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  email String @unique
+  name String
+  passwordHash String
+  isActive Boolean @default(true)
+  memberships Membership[]
+}
+model Organization {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name String
+  farms Farm[]
+}
+model Farm {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  organizationId String @db.Uuid
+  organization Organization @relation(fields: [organizationId], references: [id])
+  name String
+  location String
+  timezone String @default("America/Asuncion")
+  currency String @default("PYG")
+  targetDailyGainKg Decimal?
+  memberships Membership[]
+  animals Animal[]
+  weighings Weighing[]
+  sales Sale[]
+  @@index([organizationId])
+}
+model Membership {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  farmId String @db.Uuid
+  role Role
+  user User @relation(fields: [userId], references: [id])
+  farm Farm @relation(fields: [farmId], references: [id])
+  @@unique([userId, farmId])
+}
+model Animal {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  farmId String @db.Uuid
+  internalId String
+  registrationNumber String?
+  eid String?
+  breed String
+  sex Sex
+  category AnimalCategory
+  status AnimalStatus @default(ACTIVE)
+  origin AnimalOrigin @default(OTHER)
+  birthDate DateTime?
+  notes String?
+  isDemo Boolean @default(false)
+  farm Farm @relation(fields: [farmId], references: [id])
+  weighings Weighing[]
+  @@unique([farmId, internalId])
+  @@index([farmId, status, deletedAt])
+}
+model Weighing {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  farmId String @db.Uuid
+  animalId String @db.Uuid
+  date DateTime
+  weightKg Decimal
+  type WeighingType
+  farm Farm @relation(fields: [farmId], references: [id])
+  animal Animal @relation(fields: [animalId], references: [id])
+  @@index([farmId, date])
+}
+model Sale {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  farmId String @db.Uuid
+  date DateTime
+  buyerName String
+  priceMode SalePriceMode
+  currency String
+  totalAmount Decimal
+  farm Farm @relation(fields: [farmId], references: [id])
+}
+model SystemSetting {
+  key String @id
+  value String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
