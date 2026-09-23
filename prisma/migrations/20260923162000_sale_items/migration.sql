@@ -1,0 +1,6 @@
+CREATE TABLE "SaleItem" ("id" UUID NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "saleId" UUID NOT NULL, "animalId" UUID NOT NULL, "weightKg" DECIMAL(12,3), "unitPrice" DECIMAL(14,2) NOT NULL, "lineTotal" DECIMAL(14,2) NOT NULL, CONSTRAINT "SaleItem_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "SaleItem_saleId_animalId_key" ON "SaleItem"("saleId", "animalId");
+ALTER TABLE "SaleItem" ADD CONSTRAINT "SaleItem_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "Sale"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "SaleItem" ADD CONSTRAINT "SaleItem_animalId_fkey" FOREIGN KEY ("animalId") REFERENCES "Animal"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Sale" ADD COLUMN "buyerDocument" TEXT;
+ALTER TABLE "Sale" ADD COLUMN "notes" TEXT;

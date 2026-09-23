@@ -111,6 +111,7 @@ model Animal {
   isDemo Boolean @default(false)
   farm Farm @relation(fields: [farmId], references: [id])
   weighings Weighing[]
+  saleItems SaleItem[]
   @@unique([farmId, internalId])
   @@index([farmId, status, deletedAt])
 }
@@ -133,10 +134,25 @@ model Sale {
   farmId String @db.Uuid
   date DateTime
   buyerName String
+  buyerDocument String?
   priceMode SalePriceMode
   currency String
   totalAmount Decimal
+  notes String?
   farm Farm @relation(fields: [farmId], references: [id])
+  items SaleItem[]
+}
+model SaleItem {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  saleId String @db.Uuid
+  animalId String @db.Uuid
+  weightKg Decimal?
+  unitPrice Decimal
+  lineTotal Decimal
+  sale Sale @relation(fields: [saleId], references: [id])
+  animal Animal @relation(fields: [animalId], references: [id])
+  @@unique([saleId, animalId])
 }
 model SystemSetting {
   key String @id

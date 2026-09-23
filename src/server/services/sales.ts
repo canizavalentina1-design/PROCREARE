@@ -1,0 +1,8 @@
+import { z } from "zod";
+import { prisma } from "../db";
+import { can } from "../authz/permissions";
+import type { SessionContext } from "../auth/session";
+const item=z.object({animalId:z.string().uuid(),weightKg:z.number().positive().max(1500).optional(),unitPrice:z.number().nonnegative(),lineTotal:z.number().nonnegative()});
+export const saleInput=z.object({date:z.coerce.date(),buyerName:z.string().trim().min(2),buyerDocument:z.string().trim().max(40).optional(),priceMode:z.enum(["PER_HEAD","PER_KG"]),currency:z.string().default("PYG"),totalAmount:z.number().nonnegative(),notes:z.string().max(1000).optional(),items:z.array(item).min(1)});
+export async function createSale(ctx:SessionContext,input:unknown){if(!can(ctx.role,"sales"))throw new Error("FORBIDDEN");const data=saleInput.parse(input);const ids=data.items.map(item=>item.animalId);const animals=await prisma.animal.findMany({where:{id:{in:ids},farmId:ctx.farmId,deletedAt:null,status:"ACTIVE"}});if(animals.length!==ids.length)throw new Error("ANIMAL_NOT_AVAILABLE");return prisma.$transaction(async tx=>{const sale=await tx.sale.create({data:{farmId:ctx.farmId,date:data.date,buyerName:data.buyerName,buyerDocument:data.buyerDocument||null,priceMode:data.priceMode,currency:data.currency,totalAmount:data.totalAmount,notes:data.notes||null,items:{create:data.items}}});await tx.animal.updateMany({where:{id:{in:ids},farmId:ctx.farmId},data:{status:"SOLD"}});return sale;});}
+export async function listSales(ctx:SessionContext){return prisma.sale.findMany({where:{farmId:ctx.farmId},include:{items:true},orderBy:{date:"desc"},take:100});}
