@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { requireSession } from "../../../../../src/server/auth/session";
+import { can } from "../../../../../src/server/authz/permissions";
 import { prisma } from "../../../../../src/server/db";
 import { previewInput, previewImport } from "../../../../../src/server/services/imports";
 
@@ -11,6 +12,7 @@ export async function POST(request: Request) {
     const ctx = await requireSession();
     const body = await request.json();
     const parsed = previewInput.parse(body);
+    if (!can(ctx.role, parsed.type === "SALES" ? "importSales" : "importAnimals")) throw new Error("FORBIDDEN");
     const preview = previewImport(parsed);
     const fileHash = String(body.fileHash || "");
     if (!fileHash) throw new Error("FILE_HASH_REQUIRED");
@@ -33,6 +35,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ data: result }, { status: 201 });
   } catch (error) {
     const code = error instanceof Error ? error.message : "INVALID_INPUT";
-    return NextResponse.json({ error: { code, message: code === "DUPLICATE_FILE" ? "Este archivo ya fue importado en esta finca." : "No se pudo confirmar la importación." } }, { status: code === "UNAUTHENTICATED" ? 401 : 400 });
+    return NextResponse.json({ error: { code, message: code === "FORBIDDEN" ? "Su rol no permite importar este tipo de datos." : code === "DUPLICATE_FILE" ? "Este archivo ya fue importado en esta finca." : "No se pudo confirmar la importación." } }, { status: code === "UNAUTHENTICATED" ? 401 : code === "FORBIDDEN" ? 403 : 400 });
   }
 }
