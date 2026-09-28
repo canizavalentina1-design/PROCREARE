@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
+  if (process.env.DEMO_MODE === "true") return NextResponse.next();
   const hasSession = Boolean(request.cookies.get("procreare_session")?.value);
   if (!hasSession) return NextResponse.redirect(new URL("/ingresar", request.url));
   return NextResponse.next();
