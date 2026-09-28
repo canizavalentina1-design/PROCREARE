@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
-const pooled = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL;
-const direct = process.env.DATABASE_URL_UNPOOLED || process.env.POSTGRES_URL_NON_POOLING || pooled;
+const pooled = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL || process.env.agroganadero_DATABASE_URL || process.env.agroganadero_PRISMA_DATABASE_URL;
+const direct = process.env.DATABASE_URL_UNPOOLED || process.env.POSTGRES_URL_NON_POOLING || process.env.agroganadero_POSTGRES_URL || pooled;
 if (pooled) process.env.DATABASE_URL = pooled;
 if (direct) process.env.DATABASE_URL_UNPOOLED = direct;
 const args = process.argv.slice(2);

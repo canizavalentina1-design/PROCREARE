@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 const run = (cmd, args) => { const r = spawnSync(cmd,args,{stdio:"inherit",env:process.env}); if(r.status!==0) process.exit(r.status ?? 1); };
-const pooled = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL;
-const direct = process.env.DATABASE_URL_UNPOOLED || process.env.POSTGRES_URL_NON_POOLING || pooled;
+const pooled = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL || process.env.agroganadero_DATABASE_URL || process.env.agroganadero_PRISMA_DATABASE_URL;
+const direct = process.env.DATABASE_URL_UNPOOLED || process.env.POSTGRES_URL_NON_POOLING || process.env.agroganadero_POSTGRES_URL || pooled;
 if (pooled) process.env.DATABASE_URL = pooled;
 if (direct) process.env.DATABASE_URL_UNPOOLED = direct;
 run("npx",["prisma","generate"]);
