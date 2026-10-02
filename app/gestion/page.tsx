@@ -12,6 +12,7 @@ const modules = [
   ["/ventas-masivas", "Ventas masivas", "Vende varios animales con una sola operación."],
   ["/importar", "Importar", "CSV/Excel, mapeo editable y confirmación."],
   ["/reproduccion", "Reproducción", "Servicios, nacimientos, diagnósticos y abortos."],
+  ["/laboratorio", "Laboratorio", "Análisis, resultados y trazabilidad sanitaria por animal."],
   ["/reportes", "Reportes", "Filtros por categoría y movimientos."],
 ];
 export default function ManagementHub() { return <main className="shell"><aside className="sidebar"><a className="brand" href="/gestion">PROCREARE</a><div className="farm">Finca principal<span>Centro de gestión</span></div><nav><a className="active" href="/gestion">Gestión</a><a href="/animales">Animales</a><a href="/stock">Stock</a><a href="/reportes">Reportes</a></nav></aside><section className="content"><header><div><div className="eyebrow">CENTRO DE GESTIÓN</div><h1>Todo en un lugar</h1><p className="lead">Accede a cada módulo de PROCREARE desde una sola pantalla.</p></div></header><div className="module-grid">{modules.map(([href, title, description]) => <a className="surface module-card" href={href} key={href}><span className="eyebrow">MÓDULO</span><h2>{title}</h2><p className="muted">{description}</p><span className="module-link">Abrir módulo →</span></a>)}</div></section></main>; }
