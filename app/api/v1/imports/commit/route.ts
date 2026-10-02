@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     const fileHash = String(body.fileHash || "");
     if (!fileHash) throw new Error("FILE_HASH_REQUIRED");
     const existing = await prisma.importBatch.findUnique({ where: { farmId_fileHash: { farmId: ctx.farmId, fileHash } } });
+    let createdCount = 0; let updatedCount = 0;
     const result = await prisma.$transaction(async (tx) => {
       const batchData = {
           type: parsed.type, fileName: String(body.fileName || "importación"), fileHash,
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
         const age = String(data.age || ""); const ageMatch = age.match(/(\d+)\s*a.*?(\d+)\s*m/i); const birthFromAge = ageMatch ? new Date(Date.now() - (Number(ageMatch[1]) * 365 + Number(ageMatch[2]) * 30) * 86400000) : undefined;
         const locationName = data.location ? String(data.location).trim() : ""; const location = locationName ? await tx.location.upsert({ where: { farmId_name: { farmId: ctx.farmId, name: locationName } }, update: { isActive: true }, create: { farmId: ctx.farmId, name: locationName, type: "PASTURE" } }) : null;
         const values = { eid: data.eid ? String(data.eid) : undefined, microchip: data.microchip ? String(data.microchip) : undefined, name: data.name ? String(data.name) : undefined, breed: String(data.breed || "Sin especificar"), sex: (data.sex as "MALE" | "FEMALE") || (category === "TORO" || category === "NOVILLO" ? "MALE" : "FEMALE"), category: category as "TERNERO" | "TERNERA" | "DESMAMANTE" | "NOVILLO" | "VAQUILLA" | "VACA" | "TORO" | "BUEY", owner: data.owner ? String(data.owner) : undefined, value: data.value == null || data.value === "" ? undefined : parseNumber(data.value), birthDate: data.birthDate ? new Date(String(data.birthDate)) : birthFromAge, currentLocationId: location?.id, origin: "OTHER" as const };
-        if (existing) await tx.animal.update({ where: { id: existing.id }, data: values }); else await tx.animal.create({ data: { farmId: ctx.farmId, internalId, ...values } });
+        if (existing) { await tx.animal.update({ where: { id: existing.id }, data: values }); updatedCount += 1; } else { await tx.animal.create({ data: { farmId: ctx.farmId, internalId, ...values } }); createdCount += 1; }
       }
       if (parsed.type === "WEIGHINGS") for (const row of preview.rows.filter((item) => item.status === "VALID")) {
         const data = row.normalized as Record<string, unknown>;
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
       }
       return batch;
     });
-    return NextResponse.json({ data: result }, { status: 201 });
+    return NextResponse.json({ data: { batch: result, createdCount, updatedCount } }, { status: 201 });
   } catch (error) {
     const code = error instanceof Error ? error.message : "INVALID_INPUT";
     const message = code === "FORBIDDEN" ? "Su rol no permite importar este tipo de datos." : code === "DUPLICATE_FILE" ? "Este archivo ya fue importado en esta finca." : code === "WEIGHING_ANIMAL_NOT_FOUND" ? "No se encontró el animal asociado a uno de los pesajes." : code === "SALE_ANIMAL_NOT_FOUND" ? "No se encontró el animal asociado a una de las ventas." : `No se pudo confirmar la importación (${code}).`;
