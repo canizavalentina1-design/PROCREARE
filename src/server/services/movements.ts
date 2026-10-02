@@ -8,6 +8,7 @@ export const movementInput = z.object({
   date: z.coerce.date().default(() => new Date()),
   quantity: z.number().int().nonnegative().default(0),
   animalIds: z.array(z.string().uuid()).default([]),
+  groupId: z.string().uuid().optional(),
   origin: z.string().trim().max(120).optional(),
   destination: z.string().trim().max(120).optional(),
   value: z.number().nonnegative().optional(),
@@ -24,6 +25,7 @@ const outgoing = new Set(["SALE", "DEATH", "DISPOSAL", "OTHER_OUT", "TRANSFER_OU
 export async function createMovement(ctx: SessionContext, input: unknown) {
   if (!can(ctx.role, "editAnimals")) throw new Error("FORBIDDEN");
   const data = movementInput.parse(input);
+  if (!data.animalIds.length && data.groupId) { const groupAnimals = await prisma.animal.findMany({ where: { farmId: ctx.farmId, currentGroupId: data.groupId, status: "ACTIVE", deletedAt: null }, select: { id: true } }); data.animalIds = groupAnimals.map((animal) => animal.id); }
   if (data.animalIds.length > 0) data.quantity = data.animalIds.length;
   if (!data.quantity && !data.animalIds.length) throw new Error("QUANTITY_OR_ANIMAL_REQUIRED");
   if (!incoming.has(data.type) && !outgoing.has(data.type)) throw new Error("INVALID_MOVEMENT");

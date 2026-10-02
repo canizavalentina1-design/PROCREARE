@@ -6,6 +6,7 @@ const modules = [
   ["/stock", "Stock", "Existencias y movimientos de entrada y salida."],
   ["/operaciones", "Operaciones", "Muertes, bajas y traslados."],
   ["/organizacion", "Grupos y ubicaciones", "Grupos, lotes y ubicaciones de la finca."],
+  ["/grupos-importar", "Crear grupo desde Excel", "Sube caravanas y arma un grupo automáticamente."],
   ["/pesajes/lote", "Pesajes", "Pesaje individual y preparación para lote."],
   ["/ventas", "Ventas", "Ventas en guaraníes y actualización de stock."],
   ["/ventas-masivas", "Ventas masivas", "Vende varios animales con una sola operación."],
