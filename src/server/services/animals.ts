@@ -19,7 +19,7 @@ export const animalInput = z.object({
 });
 export type AnimalInput = z.infer<typeof animalInput>;
 export async function listAnimals(ctx: SessionContext, search?: string) {
-  return prisma.animal.findMany({ where: { farmId: ctx.farmId, deletedAt: null, ...(search ? { OR: [{ internalId: { contains: search, mode: "insensitive" } }, { registrationNumber: { contains: search, mode: "insensitive" } }, { eid: { contains: search, mode: "insensitive" } }, { breed: { contains: search, mode: "insensitive" } }] } : {}) }, orderBy: { internalId: "asc" }, take: 100 });
+  return prisma.animal.findMany({ where: { farmId: ctx.farmId, deletedAt: null, ...(search ? { OR: [{ internalId: { contains: search, mode: "insensitive" } }, { registrationNumber: { contains: search, mode: "insensitive" } }, { eid: { contains: search, mode: "insensitive" } }, { breed: { contains: search, mode: "insensitive" } }] } : {}) }, include: { currentGroup: { select: { name: true } }, currentLot: { select: { name: true } }, currentLocation: { select: { name: true } } }, orderBy: { internalId: "asc" }, take: 100 });
 }
 export async function createAnimal(ctx: SessionContext, input: AnimalInput) {
   if (!can(ctx.role, "editAnimals")) throw new Error("FORBIDDEN");
