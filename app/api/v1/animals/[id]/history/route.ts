@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { requireSession } from "../../../../../../src/server/auth/session";
+import { prisma } from "../../../../../../src/server/db";
+export const runtime = "nodejs";
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) { try { const ctx = await requireSession(); const { id } = await context.params; const animal = await prisma.animal.findFirst({ where: { id, farmId: ctx.farmId, deletedAt: null }, select: { id: true } }); if (!animal) return NextResponse.json({ error: { code: "NOT_FOUND", message: "No se encontró el animal." } }, { status: 404 }); const events = await prisma.animalEvent.findMany({ where: { farmId: ctx.farmId, animalId: id }, orderBy: [{ date: "desc" }, { createdAt: "desc" }] }); return NextResponse.json({ data: events }); } catch (error) { const code = error instanceof Error ? error.message : "INTERNAL"; return NextResponse.json({ error: { code, message: code === "UNAUTHENTICATED" ? "Debe ingresar para continuar." : "No se pudo cargar el historial." } }, { status: code === "UNAUTHENTICATED" ? 401 : 400 }); } }
