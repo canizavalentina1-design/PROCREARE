@@ -22,6 +22,8 @@ enum AnimalStatus {
   SOLD
   DEAD
   TRANSFERRED
+  INACTIVE
+  EXTERNAL
 }
 enum AnimalCategory {
   TERNERO
@@ -58,6 +60,9 @@ model User {
   passwordHash String
   isActive Boolean @default(true)
   memberships Membership[]
+  movements StockMovement[]
+  animalEvents AnimalEvent[]
+  managements Management[]
 }
 model Organization {
   id String @id @default(uuid()) @db.Uuid
@@ -82,6 +87,17 @@ model Farm {
   weighings Weighing[]
   sales Sale[]
   imports ImportBatch[]
+  groups Group[]
+  lots Lot[]
+  locations Location[]
+  movements StockMovement[]
+  animalEvents AnimalEvent[]
+  managements Management[]
+  reproductiveServices ReproductiveService[]
+  pregnancyDiagnoses PregnancyDiagnosis[]
+  births Birth[]
+  abortions Abortion[]
+  catalogItems CatalogItem[]
   @@index([organizationId])
 }
 model Membership {
@@ -110,9 +126,34 @@ model Animal {
   birthDate DateTime?
   notes String?
   isDemo Boolean @default(false)
+  name String?
+  microchip String?
+  genetics String?
+  motherId String? @db.Uuid
+  fatherId String? @db.Uuid
+  currentGroupId String? @db.Uuid
+  currentLotId String? @db.Uuid
+  currentLocationId String? @db.Uuid
   farm Farm @relation(fields: [farmId], references: [id])
   weighings Weighing[]
   saleItems SaleItem[]
+  mother Animal? @relation("AnimalMother", fields: [motherId], references: [id])
+  offspringAsMother Animal[] @relation("AnimalMother")
+  father Animal? @relation("AnimalFather", fields: [fatherId], references: [id])
+  offspringAsFather Animal[] @relation("AnimalFather")
+  currentGroup Group? @relation("AnimalGroup", fields: [currentGroupId], references: [id])
+  currentLot Lot? @relation("AnimalLot", fields: [currentLotId], references: [id])
+  currentLocation Location? @relation("AnimalLocation", fields: [currentLocationId], references: [id])
+  movementLinks MovementAnimal[]
+  events AnimalEvent[]
+  managements ManagementAnimal[]
+  servicesAsMother ReproductiveService[] @relation("ServiceMother")
+  servicesAsFather ReproductiveService[] @relation("ServiceFather")
+  diagnosesAsMother PregnancyDiagnosis[] @relation("DiagnosisMother")
+  birthsAsMother Birth[] @relation("BirthMother")
+  birthsAsFather Birth[] @relation("BirthFather")
+  abortionsAsMother Abortion[] @relation("AbortionMother")
+  birthCalves BirthCalf[]
   @@unique([farmId, internalId])
   @@index([farmId, status, deletedAt])
 }
@@ -202,4 +243,230 @@ model ImportRow {
   errors Json?
   batch ImportBatch @relation(fields: [batchId], references: [id])
   @@unique([batchId, rowNumber])
+}
+
+model Group {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  farmId String @db.Uuid
+  name String
+  description String?
+  type String?
+  isActive Boolean @default(true)
+  farm Farm @relation(fields: [farmId], references: [id])
+  lots Lot[]
+  animals Animal[] @relation("AnimalGroup")
+  movements StockMovement[] @relation("MovementGroup")
+  @@unique([farmId, name])
+}
+
+model Lot {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  farmId String @db.Uuid
+  groupId String? @db.Uuid
+  name String
+  description String?
+  isActive Boolean @default(true)
+  farm Farm @relation(fields: [farmId], references: [id])
+  group Group? @relation(fields: [groupId], references: [id])
+  animals Animal[] @relation("AnimalLot")
+  movements StockMovement[] @relation("MovementLot")
+  @@unique([farmId, name])
+}
+
+model Location {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  farmId String @db.Uuid
+  name String
+  description String?
+  type String?
+  isActive Boolean @default(true)
+  farm Farm @relation(fields: [farmId], references: [id])
+  animals Animal[] @relation("AnimalLocation")
+  movements StockMovement[] @relation("MovementLocation")
+  @@unique([farmId, name])
+}
+
+enum MovementType {
+  INITIAL
+  PURCHASE
+  BIRTH
+  OTHER_IN
+  TRANSFER_IN
+  SALE
+  DEATH
+  DISPOSAL
+  OTHER_OUT
+  TRANSFER_OUT
+}
+
+model StockMovement {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  farmId String @db.Uuid
+  userId String? @db.Uuid
+  type MovementType
+  date DateTime
+  quantity Int @default(0)
+  origin String?
+  destination String?
+  value Decimal?
+  reason String?
+  notes String?
+  farm Farm @relation(fields: [farmId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+  animals MovementAnimal[]
+  groupId String? @db.Uuid
+  group Group? @relation("MovementGroup", fields: [groupId], references: [id])
+  lotId String? @db.Uuid
+  lot Lot? @relation("MovementLot", fields: [lotId], references: [id])
+  locationId String? @db.Uuid
+  location Location? @relation("MovementLocation", fields: [locationId], references: [id])
+  @@index([farmId, date, type])
+}
+
+model MovementAnimal {
+  movementId String @db.Uuid
+  animalId String @db.Uuid
+  movement StockMovement @relation(fields: [movementId], references: [id], onDelete: Cascade)
+  animal Animal @relation(fields: [animalId], references: [id])
+  @@id([movementId, animalId])
+}
+
+model AnimalEvent {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  farmId String @db.Uuid
+  animalId String @db.Uuid
+  userId String? @db.Uuid
+  type String
+  date DateTime
+  before Json?
+  after Json?
+  notes String?
+  farm Farm @relation(fields: [farmId], references: [id])
+  animal Animal @relation(fields: [animalId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+  @@index([farmId, animalId, date])
+}
+
+model Management {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  farmId String @db.Uuid
+  userId String? @db.Uuid
+  type String
+  date DateTime
+  responsible String?
+  result String?
+  notes String?
+  farm Farm @relation(fields: [farmId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+  animals ManagementAnimal[]
+}
+
+model ManagementAnimal {
+  managementId String @db.Uuid
+  animalId String @db.Uuid
+  management Management @relation(fields: [managementId], references: [id], onDelete: Cascade)
+  animal Animal @relation(fields: [animalId], references: [id])
+  @@id([managementId, animalId])
+}
+
+model ReproductiveService {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  farmId String @db.Uuid
+  motherId String @db.Uuid
+  fatherId String? @db.Uuid
+  type String
+  date DateTime
+  expectedBirth DateTime?
+  notes String?
+  farm Farm @relation(fields: [farmId], references: [id])
+  mother Animal @relation("ServiceMother", fields: [motherId], references: [id])
+  father Animal? @relation("ServiceFather", fields: [fatherId], references: [id])
+  diagnoses PregnancyDiagnosis[]
+  births Birth[]
+  abortions Abortion[]
+}
+
+model PregnancyDiagnosis {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  farmId String @db.Uuid
+  motherId String @db.Uuid
+  serviceId String? @db.Uuid
+  date DateTime
+  result String
+  gestationDays Int?
+  evaluation String?
+  notes String?
+  farm Farm @relation(fields: [farmId], references: [id])
+  mother Animal @relation("DiagnosisMother", fields: [motherId], references: [id])
+  service ReproductiveService? @relation(fields: [serviceId], references: [id])
+}
+
+model Birth {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  farmId String @db.Uuid
+  motherId String @db.Uuid
+  fatherId String? @db.Uuid
+  serviceId String? @db.Uuid
+  date DateTime
+  gestationDays Int?
+  totalCalves Int @default(0)
+  stillborn Int @default(0)
+  notes String?
+  farm Farm @relation(fields: [farmId], references: [id])
+  mother Animal @relation("BirthMother", fields: [motherId], references: [id])
+  father Animal? @relation("BirthFather", fields: [fatherId], references: [id])
+  service ReproductiveService? @relation(fields: [serviceId], references: [id])
+  calves BirthCalf[]
+}
+
+model BirthCalf {
+  id String @id @default(uuid()) @db.Uuid
+  birthId String @db.Uuid
+  animalId String? @db.Uuid
+  identifier String
+  sex Sex
+  alive Boolean @default(true)
+  notes String?
+  birth Birth @relation(fields: [birthId], references: [id], onDelete: Cascade)
+  animal Animal? @relation(fields: [animalId], references: [id])
+}
+
+model Abortion {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  farmId String @db.Uuid
+  motherId String @db.Uuid
+  serviceId String? @db.Uuid
+  date DateTime
+  gestationDays Int?
+  cause String?
+  notes String?
+  farm Farm @relation(fields: [farmId], references: [id])
+  mother Animal @relation("AbortionMother", fields: [motherId], references: [id])
+  service ReproductiveService? @relation(fields: [serviceId], references: [id])
+}
+
+model CatalogItem {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  farmId String @db.Uuid
+  type String
+  name String
+  description String?
+  isActive Boolean @default(true)
+  farm Farm @relation(fields: [farmId], references: [id])
+  @@unique([farmId, type, name])
 }
