@@ -1,7 +1,7 @@
 import {NextResponse} from "next/server";
 import {z} from "zod";
-import {requireSession} from "../../../../../../../src/server/auth/session";
-import {prisma} from "../../../../../../../src/server/db";
+import {requireSession} from "../../../../../../src/server/auth/session";
+import {prisma} from "../../../../../../src/server/db";
 const input=z.object({date:z.coerce.date(),analysisType:z.string().trim().min(1).max(120),sample:z.string().trim().max(120).optional(),result:z.string().trim().min(1).max(4000),laboratory:z.string().trim().max(160).optional(),professional:z.string().trim().max(160).optional(),cost:z.number().nonnegative().optional(),attachmentUrl:z.string().url().optional(),notes:z.string().trim().max(2000).optional()});
 export const runtime="nodejs";
 export async function GET(_request:Request,{params}:{params:Promise<{id:string}>}){try{const ctx=await requireSession();const{id}=await params;const data=await prisma.laboratoryRecord.findMany({where:{farmId:ctx.farmId,animalId:id},orderBy:{date:"desc"}});return NextResponse.json({data});}catch(error){return NextResponse.json({error:{code:error instanceof Error?error.message:"INTERNAL",message:"No se pudieron cargar los análisis."}},{status:400});}}
