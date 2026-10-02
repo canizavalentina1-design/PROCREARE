@@ -8,7 +8,6 @@ export const movementInput = z.object({
   date: z.coerce.date().default(() => new Date()),
   quantity: z.number().int().nonnegative().default(0),
   animalIds: z.array(z.string().uuid()).default([]),
-  groupId: z.string().uuid().optional(),
   origin: z.string().trim().max(120).optional(),
   destination: z.string().trim().max(120).optional(),
   value: z.number().nonnegative().optional(),
