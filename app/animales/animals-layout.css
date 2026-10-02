@@ -1,0 +1,4 @@
+.module-layout{display:flex;min-height:100vh;background:var(--background)}
+.module-layout>.shell{display:contents}
+.module-layout>.shell>.sidebar{display:none}
+.module-layout>.shell>.content{flex:1;min-width:0}
