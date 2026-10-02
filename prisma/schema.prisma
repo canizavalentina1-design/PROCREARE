@@ -130,6 +130,8 @@ model Animal {
   name String?
   microchip String?
   genetics String?
+  owner String?
+  value Decimal? @db.Decimal(14,2)
   motherId String? @db.Uuid
   fatherId String? @db.Uuid
   currentGroupId String? @db.Uuid

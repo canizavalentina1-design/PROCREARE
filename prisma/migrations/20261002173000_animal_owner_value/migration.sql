@@ -1,0 +1,2 @@
+ALTER TABLE "Animal" ADD COLUMN "owner" TEXT;
+ALTER TABLE "Animal" ADD COLUMN "value" DECIMAL(14,2);

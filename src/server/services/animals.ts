@@ -16,16 +16,18 @@ export const animalInput = z.object({
   name: z.string().trim().max(120).optional(),
   microchip: z.string().trim().max(120).optional(),
   genetics: z.string().trim().max(120).optional(),
+  owner: z.string().trim().max(160).optional().or(z.literal("")),
+  value: z.coerce.number().nonnegative().optional(),
 });
 export type AnimalInput = z.infer<typeof animalInput>;
 export async function listAnimals(ctx: SessionContext, search?: string) {
-  return prisma.animal.findMany({ where: { farmId: ctx.farmId, deletedAt: null, ...(search ? { OR: [{ internalId: { contains: search, mode: "insensitive" } }, { registrationNumber: { contains: search, mode: "insensitive" } }, { eid: { contains: search, mode: "insensitive" } }, { breed: { contains: search, mode: "insensitive" } }] } : {}) }, include: { currentGroup: { select: { name: true } }, currentLot: { select: { name: true } }, currentLocation: { select: { name: true } } }, orderBy: { internalId: "asc" }, take: 100 });
+  return prisma.animal.findMany({ where: { farmId: ctx.farmId, deletedAt: null, ...(search ? { OR: [{ internalId: { contains: search, mode: "insensitive" } }, { registrationNumber: { contains: search, mode: "insensitive" } }, { eid: { contains: search, mode: "insensitive" } }, { breed: { contains: search, mode: "insensitive" } }, { owner: { contains: search, mode: "insensitive" } }] } : {}) }, include: { currentGroup: { select: { name: true } }, currentLot: { select: { name: true } }, currentLocation: { select: { name: true } } }, orderBy: { internalId: "asc" }, take: 100 });
 }
 export async function createAnimal(ctx: SessionContext, input: AnimalInput) {
   if (!can(ctx.role, "editAnimals")) throw new Error("FORBIDDEN");
   const data = animalInput.parse(input);
   return prisma.$transaction(async (tx) => {
-    const animal = await tx.animal.create({ data: { ...data, farmId: ctx.farmId, registrationNumber: data.registrationNumber || null, eid: data.eid || null, name: data.name || null, microchip: data.microchip || null, genetics: data.genetics || null } });
+    const animal = await tx.animal.create({ data: { ...data, farmId: ctx.farmId, registrationNumber: data.registrationNumber || null, eid: data.eid || null, name: data.name || null, microchip: data.microchip || null, genetics: data.genetics || null, owner: data.owner || null, value: data.value ?? null } });
     await tx.stockMovement.create({ data: { farmId: ctx.farmId, userId: ctx.userId, type: data.origin === "PURCHASED" ? "PURCHASE" : data.origin === "BORN_ON_FARM" ? "BIRTH" : "INITIAL", date: new Date(), quantity: 1, animals: { create: [{ animalId: animal.id }] } } });
     await tx.animalEvent.create({ data: { farmId: ctx.farmId, animalId: animal.id, userId: ctx.userId, type: "CREATED", date: new Date(), after: { status: animal.status, origin: animal.origin } } });
     return animal;
@@ -37,7 +39,7 @@ export async function updateAnimal(ctx: SessionContext, id: string, input: Anima
   const data = animalInput.parse(input);
   const result = await prisma.animal.updateMany({
     where: { id, farmId: ctx.farmId, deletedAt: null },
-    data: { ...data, registrationNumber: data.registrationNumber || null, eid: data.eid || null },
+    data: { ...data, registrationNumber: data.registrationNumber || null, eid: data.eid || null, owner: data.owner || null, value: data.value ?? null },
   });
   if (!result.count) throw new Error("NOT_FOUND");
   return prisma.animal.findUniqueOrThrow({ where: { id } });
