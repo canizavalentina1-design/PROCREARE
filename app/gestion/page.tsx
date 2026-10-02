@@ -1,6 +1,7 @@
 "use client";
 import "./gestion.css";
 const modules = [
+  ["/animales-masivo", "Acciones masivas", "Selecciona cientos de animales y aplica cambios en lote."],
   ["/animales", "Animales", "Alta, edición, búsqueda e historial base."],
   ["/stock", "Stock", "Existencias y movimientos de entrada y salida."],
   ["/operaciones", "Operaciones", "Muertes, bajas y traslados."],
