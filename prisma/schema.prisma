@@ -97,6 +97,7 @@ model Farm {
   pregnancyDiagnoses PregnancyDiagnosis[]
   births Birth[]
   abortions Abortion[]
+  laboratoryRecords LaboratoryRecord[]
   catalogItems CatalogItem[]
   @@index([organizationId])
 }
@@ -146,6 +147,7 @@ model Animal {
   currentLocation Location? @relation("AnimalLocation", fields: [currentLocationId], references: [id])
   movementLinks MovementAnimal[]
   events AnimalEvent[]
+  laboratoryRecords LaboratoryRecord[]
   managements ManagementAnimal[]
   servicesAsMother ReproductiveService[] @relation("ServiceMother")
   servicesAsFather ReproductiveService[] @relation("ServiceFather")
@@ -352,6 +354,25 @@ model AnimalEvent {
   farm Farm @relation(fields: [farmId], references: [id])
   animal Animal @relation(fields: [animalId], references: [id])
   user User? @relation(fields: [userId], references: [id])
+  @@index([farmId, animalId, date])
+}
+
+model LaboratoryRecord {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  farmId String @db.Uuid
+  animalId String @db.Uuid
+  date DateTime
+  analysisType String
+  sample String?
+  result String
+  laboratory String?
+  professional String?
+  cost Decimal?
+  attachmentUrl String?
+  notes String?
+  farm Farm @relation(fields: [farmId], references: [id])
+  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
   @@index([farmId, animalId, date])
 }
 
