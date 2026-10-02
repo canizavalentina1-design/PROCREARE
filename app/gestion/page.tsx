@@ -8,6 +8,7 @@ const modules = [
   ["/organizacion", "Grupos y ubicaciones", "Grupos, lotes y ubicaciones de la finca."],
   ["/pesajes/lote", "Pesajes", "Pesaje individual y preparación para lote."],
   ["/ventas", "Ventas", "Ventas en guaraníes y actualización de stock."],
+  ["/ventas-masivas", "Ventas masivas", "Vende varios animales con una sola operación."],
   ["/importar", "Importar", "CSV/Excel, mapeo editable y confirmación."],
   ["/reproduccion", "Reproducción", "Servicios, nacimientos, diagnósticos y abortos."],
   ["/reportes", "Reportes", "Filtros por categoría y movimientos."],
