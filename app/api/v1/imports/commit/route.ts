@@ -54,6 +54,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ data: result }, { status: 201 });
   } catch (error) {
     const code = error instanceof Error ? error.message : "INVALID_INPUT";
-    return NextResponse.json({ error: { code, message: code === "FORBIDDEN" ? "Su rol no permite importar este tipo de datos." : code === "DUPLICATE_FILE" ? "Este archivo ya fue importado en esta finca." : "No se pudo confirmar la importación." } }, { status: code === "UNAUTHENTICATED" ? 401 : code === "FORBIDDEN" ? 403 : 400 });
+    const message = code === "FORBIDDEN" ? "Su rol no permite importar este tipo de datos." : code === "DUPLICATE_FILE" ? "Este archivo ya fue importado en esta finca." : code === "WEIGHING_ANIMAL_NOT_FOUND" ? "No se encontró el animal asociado a uno de los pesajes." : code === "SALE_ANIMAL_NOT_FOUND" ? "No se encontró el animal asociado a una de las ventas." : `No se pudo confirmar la importación (${code}).`;
+    return NextResponse.json({ error: { code, message } }, { status: code === "UNAUTHENTICATED" ? 401 : code === "FORBIDDEN" ? 403 : 400 });
   }
 }

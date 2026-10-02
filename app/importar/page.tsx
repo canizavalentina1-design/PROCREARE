@@ -1,47 +1,11 @@
 "use client";
 import { useState } from "react";
 import Papa from "papaparse";
-
-type ImportType = "ANIMALS" | "WEIGHINGS" | "SALES";
-type InputData = { type: ImportType; headers: string[]; rows: Record<string, unknown>[]; fileName?: string };
-type Preview = { mapping: Record<string, string | null>; rows: Array<{ rowNumber: number; status: string; errors: string[]; normalized: Record<string, unknown> }>; validRows: number; errorRows: number };
-const targets = ["", "internalId", "eid", "microchip", "name", "breed", "sex", "category", "birthDate", "weightKg", "date", "unitPrice", "buyerName", "animalId"];
-
-export default function ImportPage() {
-  const [type, setType] = useState<ImportType | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [input, setInput] = useState<InputData | null>(null);
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  function choose(value: ImportType) { setType(value); setFile(null); setInput(null); setPreview(null); setMessage(""); }
-  async function previewResponse(next: File, data: InputData | FormData) {
-    setLoading(true); setMessage("");
-    try {
-      const response = await fetch("/api/v1/imports/preview", data instanceof FormData ? { method: "POST", body: data } : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(data) });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo preparar la vista previa.");
-      setPreview(payload.data); setInput(payload.input ?? data); setFile(next);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "No se pudo preparar la vista previa."); }
-    finally { setLoading(false); }
-  }
-  function readFile(next: File | null) {
-    if (!next || !type) return;
-    if (next.name.toLowerCase().endsWith(".xlsx")) { const data = new FormData(); data.append("type", type); data.append("file", next); void previewResponse(next, data); return; }
-    Papa.parse<Record<string, unknown>>(next, { header: true, skipEmptyLines: true, complete: (result) => void previewResponse(next, { type, headers: result.meta.fields ?? [], rows: result.data }) });
-  }
-  async function commit() {
-    if (!file || !type || !preview || !input) return;
-    setLoading(true); setMessage("");
-    try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const fileHash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), (byte) => byte.toString(16).padStart(2, "0")).join("");
-      const response = await fetch("/api/v1/imports/commit", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...input, type, mapping: preview.mapping, fileHash, fileName: file.name }) });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message ?? "No se pudo confirmar la importación.");
-      setMessage(`Importación confirmada: ${preview.validRows} filas válidas.`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "No se pudo confirmar la importación."); }
-    finally { setLoading(false); }
-  }
-  return <main className="shell"><aside className="sidebar"><a className="brand" href="/">PROCREARE</a><div className="farm">Finca principal<span>Importar</span></div><nav><a href="/">Inicio</a><a href="/animales">Animales</a><a href="/stock">Stock</a><a href="/operaciones">Operaciones</a><a href="/pesajes/lote">Pesajes</a><a href="/ventas">Ventas</a><a className="active" href="/importar">Importar</a></nav></aside><section className="content"><header><div><div className="eyebrow">CARGA SEGURA DE DATOS</div><h1>Importar</h1><p className="lead">Sube, mapea, valida y confirma sin duplicar archivos.</p></div></header><div className="surface"><h2>1. Elige qué importar</h2><div className="empty-actions"><button className={type === "ANIMALS" ? "button" : "secondary"} onClick={() => choose("ANIMALS")}>Animales</button><button className={type === "WEIGHINGS" ? "button" : "secondary"} onClick={() => choose("WEIGHINGS")}>Pesajes</button><button className={type === "SALES" ? "button" : "secondary"} onClick={() => choose("SALES")}>Ventas</button></div>{type && <><h2>2. Selecciona CSV o Excel</h2><label>Archivo<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => readFile(event.target.files?.[0] ?? null)} /></label>{loading && <p className="muted">Procesando…</p>}{preview && <><h2>3. Revisa el mapeo</h2><div className="mapping-grid">{Object.entries(preview.mapping).map(([header, target]) => <label key={header}>{header}<select value={target || ""} onChange={(event) => setPreview({ ...preview, mapping: { ...preview.mapping, [header]: event.target.value || null } })}>{targets.map((option) => <option key={option} value={option}>{option || "Ignorar"}</option>)}</select></label>)}</div><div className="notice"><div><strong>{file?.name}</strong><p>{preview.validRows} filas válidas · {preview.errorRows} con errores</p></div><button className="button" onClick={commit} disabled={loading || preview.errorRows > 0}>Confirmar importación</button></div></>}{preview?.rows.slice(0, 8).map((row) => <p className={row.status === "VALID" ? "muted" : "form-error"} key={row.rowNumber}>Fila {row.rowNumber}: {row.status === "VALID" ? "lista" : row.errors.join(" ")}</p>)}{message && <p className="form-error" role="status">{message}</p>}</>}</div></section></main>;
-}
+type ImportType="ANIMALS"|"WEIGHINGS"|"SALES"; type InputData={type:ImportType;headers:string[];rows:Record<string,unknown>[];fileName?:string}; type Row={rowNumber:number;status:string;errors:string[];normalized:Record<string,unknown>;raw:Record<string,unknown>}; type Preview={mapping:Record<string,string|null>;rows:Row[];validRows:number;errorRows:number};
+const targets=["","internalId","eid","microchip","name","breed","sex","category","owner","value","birthDate","weightKg","date","unitPrice","buyerName","animalId"];
+const label=(x:string)=>({internalId:"Identificador / caravana",eid:"EID",microchip:"Microchip",name:"Nombre",breed:"Raza",sex:"Sexo",category:"Categoría",owner:"Propietario",value:"Valor del animal",birthDate:"Nacimiento",weightKg:"Peso kg",date:"Fecha",unitPrice:"Precio",buyerName:"Comprador",animalId:"ID del animal"}[x]||"Ignorar");
+export default function ImportPage(){const[type,setType]=useState<ImportType|null>(null);const[file,setFile]=useState<File|null>(null);const[input,setInput]=useState<InputData|null>(null);const[preview,setPreview]=useState<Preview|null>(null);const[loading,setLoading]=useState(false);const[message,setMessage]=useState("");
+ async function send(next:File,data:InputData|FormData){setLoading(true);setMessage("");try{const r=await fetch("/api/v1/imports/preview",data instanceof FormData?{method:"POST",body:data}:{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data)});const p=await r.json();if(!r.ok)throw Error(p.error?.message||"No se pudo leer el archivo");setFile(next);setInput(p.input||data);setPreview(p.data)}catch(e){setMessage(e instanceof Error?e.message:"No se pudo leer el archivo")}finally{setLoading(false)}}
+ function read(next:File|null){if(!next||!type)return;if(next.name.toLowerCase().endsWith(".xlsx")){const f=new FormData();f.append("type",type);f.append("file",next);void send(next,f);return}Papa.parse<Record<string,unknown>>(next,{header:true,skipEmptyLines:true,complete:r=>void send(next,{type,headers:r.meta.fields||[],rows:r.data})})}
+ async function commit(){if(!file||!type||!input||!preview)return;setLoading(true);try{const bytes=new Uint8Array(await file.arrayBuffer());const hash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),b=>b.toString(16).padStart(2,"0")).join("");const r=await fetch("/api/v1/imports/commit",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...input,type,mapping:preview.mapping,fileHash:hash,fileName:file.name})});const p=await r.json();if(!r.ok)throw Error(p.error?.message||"No se pudo confirmar");setMessage(`Importación confirmada: ${preview.validRows} filas guardadas.`)}catch(e){setMessage(e instanceof Error?e.message:"No se pudo confirmar")}finally{setLoading(false)}}
+ return <main className="shell"><aside className="sidebar"><a className="brand" href="/">PROCREARE</a><div className="farm">Finca principal<span>Importar</span></div><nav><a href="/">Inicio</a><a href="/animales">Animales</a><a href="/stock">Stock</a><a href="/operaciones">Operaciones</a><a href="/pesajes/lote">Pesajes</a><a href="/ventas">Ventas</a><a className="active" href="/importar">Importar</a></nav></aside><section className="content"><header><div><div className="eyebrow">CARGA SEGURA DE DATOS</div><h1>Importar</h1><p className="lead">Elegí qué representa cada columna y confirmá solo cuando los datos estén correctos.</p></div></header><div className="surface"><h2>1. Elegí qué importar</h2><div className="empty-actions">{(["ANIMALS","WEIGHINGS","SALES"] as ImportType[]).map(x=><button key={x} className={type===x?"button":"secondary"} onClick={()=>{setType(x);setPreview(null);setMessage("")}}>{x==="ANIMALS"?"Animales":x==="WEIGHINGS"?"Pesajes":"Ventas"}</button>)}</div>{type&&<><h2>2. Seleccioná CSV o Excel</h2><label>Archivo<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={e=>read(e.target.files?.[0]||null)}/></label>{loading&&<p className="muted">Procesando…</p>}{preview&&<><h2>3. Decidí qué contiene cada columna</h2><p className="import-help">Cada columna tiene su selector. Elegí el destino correcto; las columnas en “Ignorar” no se guardan. Debajo podés revisar los valores fila por fila.</p><div className="import-preview-table"><table><thead><tr><th>Fila</th>{Object.keys(preview.rows[0]?.raw||{}).map(h=><th key={h}><span>{h}</span><select value={preview.mapping[h]||""} onChange={e=>setPreview({...preview,mapping:{...preview.mapping,[h]:e.target.value||null}})}>{targets.map(x=><option key={x} value={x}>{label(x)}</option>)}</select></th>)}<th>Estado</th></tr></thead><tbody>{preview.rows.slice(0,20).map(row=><tr key={row.rowNumber}><td>{row.rowNumber}</td>{Object.keys(row.raw).map(h=><td key={h}>{String(row.raw[h]??"")}</td>)}<td className={row.status==="VALID"?"import-ok":"form-error"}>{row.status==="VALID"?"Lista":row.errors.join(" ")}</td></tr>)}</tbody></table></div><div className="notice"><div><strong>{file?.name}</strong><p>{preview.validRows} filas listas · {preview.errorRows} con errores</p></div><button className="button" onClick={commit} disabled={loading||preview.errorRows>0}>Confirmar importación</button></div></>}{message&&<p className={message.startsWith("Importación confirmada")?"import-ok":"form-error"} role="status">{message}</p>}</>}</div></section></main>}
