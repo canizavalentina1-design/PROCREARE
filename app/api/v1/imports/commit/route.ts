@@ -18,12 +18,14 @@ export async function POST(request: Request) {
     const fileHash = String(body.fileHash || "");
     if (!fileHash) throw new Error("FILE_HASH_REQUIRED");
     const existing = await prisma.importBatch.findUnique({ where: { farmId_fileHash: { farmId: ctx.farmId, fileHash } } });
-    if (existing) throw new Error("DUPLICATE_FILE");
     const result = await prisma.$transaction(async (tx) => {
-      const batch = await tx.importBatch.create({
+      const batchData = {
+          type: parsed.type, fileName: String(body.fileName || "importación"), fileHash,
+          status: "COMMITTED" as const, totalRows: preview.rows.length, validRows: preview.validRows, errorRows: preview.errorRows, committedAt: new Date(),
+      };
+      const batch = existing ? await tx.importBatch.update({ where: { id: existing.id }, data: { ...batchData, rows: { deleteMany: {}, create: preview.rows.map((row) => ({ rowNumber: row.rowNumber, raw: row.raw as Prisma.InputJsonValue, normalized: row.normalized as Prisma.InputJsonValue, status: row.status, errors: row.errors as Prisma.InputJsonValue })) } } }) : await tx.importBatch.create({
         data: {
-          farmId: ctx.farmId, type: parsed.type, fileName: String(body.fileName || "importación"), fileHash,
-          status: "COMMITTED", totalRows: preview.rows.length, validRows: preview.validRows, errorRows: preview.errorRows, committedAt: new Date(),
+          farmId: ctx.farmId, ...batchData,
           rows: { create: preview.rows.map((row) => ({ rowNumber: row.rowNumber, raw: row.raw as Prisma.InputJsonValue, normalized: row.normalized as Prisma.InputJsonValue, status: row.status, errors: row.errors as Prisma.InputJsonValue })) },
         },
       });
@@ -33,7 +35,9 @@ export async function POST(request: Request) {
         const rawCategory = String(data.category || "TERNERO").toUpperCase();
         const category = rawCategory.includes("VAQUILLA") ? "VAQUILLA" : rawCategory.includes("VACA") ? "VACA" : rawCategory.includes("NOVILLO") ? "NOVILLO" : rawCategory.includes("TERNERA") ? "TERNERA" : rawCategory.includes("TORO") ? "TORO" : "TERNERO";
         const existing = await tx.animal.findUnique({ where: { farmId_internalId: { farmId: ctx.farmId, internalId } } });
-        const values = { eid: data.eid ? String(data.eid) : undefined, microchip: data.microchip ? String(data.microchip) : undefined, name: data.name ? String(data.name) : undefined, breed: String(data.breed || "Sin especificar"), sex: (data.sex as "MALE" | "FEMALE") || (category === "TORO" || category === "NOVILLO" ? "MALE" : "FEMALE"), category: category as "TERNERO" | "TERNERA" | "DESMAMANTE" | "NOVILLO" | "VAQUILLA" | "VACA" | "TORO" | "BUEY", owner: data.owner ? String(data.owner) : undefined, value: data.value == null || data.value === "" ? undefined : parseNumber(data.value), birthDate: data.birthDate ? new Date(String(data.birthDate)) : undefined, origin: "OTHER" as const };
+        const age = String(data.age || ""); const ageMatch = age.match(/(\d+)\s*a.*?(\d+)\s*m/i); const birthFromAge = ageMatch ? new Date(Date.now() - (Number(ageMatch[1]) * 365 + Number(ageMatch[2]) * 30) * 86400000) : undefined;
+        const locationName = data.location ? String(data.location).trim() : ""; const location = locationName ? await tx.location.upsert({ where: { farmId_name: { farmId: ctx.farmId, name: locationName } }, update: { isActive: true }, create: { farmId: ctx.farmId, name: locationName, type: "PASTURE" } }) : null;
+        const values = { eid: data.eid ? String(data.eid) : undefined, microchip: data.microchip ? String(data.microchip) : undefined, name: data.name ? String(data.name) : undefined, breed: String(data.breed || "Sin especificar"), sex: (data.sex as "MALE" | "FEMALE") || (category === "TORO" || category === "NOVILLO" ? "MALE" : "FEMALE"), category: category as "TERNERO" | "TERNERA" | "DESMAMANTE" | "NOVILLO" | "VAQUILLA" | "VACA" | "TORO" | "BUEY", owner: data.owner ? String(data.owner) : undefined, value: data.value == null || data.value === "" ? undefined : parseNumber(data.value), birthDate: data.birthDate ? new Date(String(data.birthDate)) : birthFromAge, currentLocationId: location?.id, origin: "OTHER" as const };
         if (existing) await tx.animal.update({ where: { id: existing.id }, data: values }); else await tx.animal.create({ data: { farmId: ctx.farmId, internalId, ...values } });
       }
       if (parsed.type === "WEIGHINGS") for (const row of preview.rows.filter((item) => item.status === "VALID")) {
