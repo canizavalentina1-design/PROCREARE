@@ -29,7 +29,12 @@ export async function POST(request: Request) {
       });
       if (parsed.type === "ANIMALS") for (const row of preview.rows.filter((item) => item.status === "VALID")) {
         const data = row.normalized as Record<string, unknown>;
-        await tx.animal.create({ data: { farmId: ctx.farmId, internalId: String(data.internalId || ""), eid: data.eid ? String(data.eid) : null, breed: String(data.breed || "Sin especificar"), sex: data.sex as "MALE" | "FEMALE", category: (data.category as "TERNERO") || "TERNERO", origin: (data.origin as "OTHER") || "OTHER" } });
+        const internalId = String(data.internalId || "").trim();
+        const rawCategory = String(data.category || "TERNERO").toUpperCase();
+        const category = rawCategory.includes("VAQUILLA") ? "VAQUILLA" : rawCategory.includes("VACA") ? "VACA" : rawCategory.includes("NOVILLO") ? "NOVILLO" : rawCategory.includes("TERNERA") ? "TERNERA" : rawCategory.includes("TORO") ? "TORO" : "TERNERO";
+        const existing = await tx.animal.findUnique({ where: { farmId_internalId: { farmId: ctx.farmId, internalId } } });
+        const values = { eid: data.eid ? String(data.eid) : undefined, microchip: data.microchip ? String(data.microchip) : undefined, name: data.name ? String(data.name) : undefined, breed: String(data.breed || "Sin especificar"), sex: (data.sex as "MALE" | "FEMALE") || (category === "TORO" || category === "NOVILLO" ? "MALE" : "FEMALE"), category: category as "TERNERO" | "TERNERA" | "DESMAMANTE" | "NOVILLO" | "VAQUILLA" | "VACA" | "TORO" | "BUEY", owner: data.owner ? String(data.owner) : undefined, value: data.value == null || data.value === "" ? undefined : parseNumber(data.value), birthDate: data.birthDate ? new Date(String(data.birthDate)) : undefined, origin: "OTHER" as const };
+        if (existing) await tx.animal.update({ where: { id: existing.id }, data: values }); else await tx.animal.create({ data: { farmId: ctx.farmId, internalId, ...values } });
       }
       if (parsed.type === "WEIGHINGS") for (const row of preview.rows.filter((item) => item.status === "VALID")) {
         const data = row.normalized as Record<string, unknown>;

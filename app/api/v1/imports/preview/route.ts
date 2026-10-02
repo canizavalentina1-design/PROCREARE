@@ -22,15 +22,12 @@ export async function POST(request: Request) {
       await workbook.xlsx.load(await file.arrayBuffer());
       const sheet = workbook.worksheets[0];
       if (!sheet) throw new Error("EMPTY_FILE");
-      const headers: string[] = [];
-      sheet.getRow(1).eachCell((cell, index) => { headers[index - 1] = String(cell.value || ""); });
-      const rows: Record<string, unknown>[] = [];
-      sheet.eachRow((row, index) => {
-        if (index === 1) return;
-        const item: Record<string, unknown> = {};
-        row.eachCell((cell, column) => { item[headers[column - 1] || `columna_${column}`] = cell.value instanceof Date ? cell.value.toISOString() : cell.value; });
-        rows.push(item);
-      });
+      const rawRows: unknown[][] = [];
+      sheet.eachRow(row => { const values: unknown[] = []; row.eachCell((cell, column) => { values[column - 1] = cell.value instanceof Date ? cell.value.toISOString() : cell.value; }); rawRows.push(values); });
+      const headerIndex = rawRows.findIndex(row => row.some(value => String(value ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes("identificador")));
+      if (headerIndex < 0) throw new Error("HEADER_NOT_FOUND");
+      const headers = (rawRows[headerIndex] || []).map(value => String(value || "").trim());
+      const rows = rawRows.slice(headerIndex + 1).filter(row => row.some(value => value !== undefined && value !== null && String(value).trim() !== "")).map(row => Object.fromEntries(headers.map((header, index) => [header || `columna_${index + 1}`, row[index] ?? ""])));
       body = { type, headers, rows, fileName: file.name };
     } else body = await request.json();
     if (!can(ctx.role, body.type === "SALES" ? "importSales" : "importAnimals")) throw new Error("FORBIDDEN");
