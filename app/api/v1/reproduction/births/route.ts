@@ -1,0 +1,7 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireSession } from "../../../../../src/server/auth/session";
+import { prisma } from "../../../../../src/server/db";
+const input = z.object({ motherId: z.string().uuid(), fatherId: z.string().uuid().optional(), serviceId: z.string().uuid().optional(), date: z.coerce.date(), gestationDays: z.number().int().nonnegative().optional(), totalCalves: z.number().int().positive(), stillborn: z.number().int().nonnegative().default(0), notes: z.string().max(1000).optional() });
+export const runtime = "nodejs";
+export async function POST(request: Request) { try { const ctx = await requireSession(); const data = input.parse(await request.json()); if (data.stillborn > data.totalCalves) throw new Error("INVALID_CALVES"); const mother = await prisma.animal.findFirst({ where: { id: data.motherId, farmId: ctx.farmId, sex: "FEMALE", deletedAt: null } }); if (!mother) throw new Error("MOTHER_NOT_FOUND"); const birth = await prisma.birth.create({ data: { ...data, farmId: ctx.farmId, fatherId: data.fatherId || null, serviceId: data.serviceId || null, notes: data.notes || null } }); return NextResponse.json({ data: birth }, { status: 201 }); } catch (error) { const code = error instanceof Error ? error.message : "INTERNAL"; return NextResponse.json({ error: { code, message: "No se pudo registrar el nacimiento." } }, { status: 400 }); } }
